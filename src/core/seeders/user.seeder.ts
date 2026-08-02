@@ -4,10 +4,10 @@ import * as agron from 'argon2';
 
 @Injectable()
 export class UserSeeder implements OnModuleInit {
-  constructor(private readonly pirsma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
-    const existUser = await this.pirsma.user.findUnique({
+    const existUser = await this.prisma.user.findUnique({
       where: {
         phone: '+998930002329',
       },
@@ -15,7 +15,7 @@ export class UserSeeder implements OnModuleInit {
     if (existUser) {
       return Logger.log('✅ Superadmin already exists !!!');
     }
-    await this.pirsma.user.create({
+    await this.prisma.user.create({
       data: {
         full_name: "Mohirjon To'ychiboyev",
         phone: '+998930002329',
