@@ -18,10 +18,6 @@ export class CreateAdminDto {
   phone!: string;
 
   @ApiProperty()
-  @IsEmail()
-  email!: string;
-
-  @ApiProperty()
   @IsString()
   @MinLength(4)
   password!: string;

@@ -9,7 +9,7 @@ export class AuthService {
     constructor(
         private prisma: PrismaService,
         private jwtToken: JwtToken
-
+        
     ) {}
     
     async login(payload:LoginDto) {
@@ -22,14 +22,19 @@ export class AuthService {
         if (!existUser) {
             throw new NotFoundException('User not found with this phone or password');
         }
-
+        
         if(!await argon.verify(existUser.password,payload.password)){
             throw new NotFoundException('User not found with this phone or password');
         }
         return {
             success:true,
             accessToken: await this.jwtToken.jwtAccessToken({id:existUser.id, full_name:existUser.full_name, role:existUser.role}),
-            refreshToken: await this.jwtToken.jwtRefreshToken({id:existUser.id, full_name:existUser.full_name, role:existUser.role})
+            refreshToken: await this.jwtToken.jwtRefreshToken({id:existUser.id, full_name:existUser.full_name, role:existUser.role}),
+            user: {
+                id: existUser.id,
+                full_name: existUser.full_name,
+                role: existUser.role,
+            }
         }
     }
 }
