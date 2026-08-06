@@ -60,7 +60,7 @@ model TeacherProfile {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  user    User      @relation(fields: [userId], references: [id])
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   courses Courses[]
 
   @@map("teacher_profile")
@@ -91,9 +91,9 @@ model Courses {
   created_at   DateTime    @default(now())
   updated_at   DateTime    @updatedAt
 
-  categories      Categories     @relation(fields: [categoriesId], references: [id])
-  user            User?          @relation(fields: [assistantId], references: [id])
-  teacher_profile TeacherProfile @relation(fields: [teacherId], references: [id])
+  categories      Categories     @relation(fields: [categoriesId], references: [id], onDelete: Cascade)
+  user            User?          @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  teacher_profile TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   sections        Sections[]
 
   @@map("courses")
@@ -106,7 +106,7 @@ model Sections {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  course  Courses   @relation(fields: [coursesId], references: [id])
+  course  Courses   @relation(fields: [coursesId], references: [id], onDelete: Cascade)
   lessons Lessons[]
 
   @@map("sections")
@@ -121,7 +121,7 @@ model Lessons {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  section   Sections    @relation(fields: [sectionsId], references: [id])
+  section   Sections    @relation(fields: [sectionsId], references: [id], onDelete: Cascade)
   materials Materials[]
   homeworks Homeworks[]
   tests     Tests[]
@@ -178,7 +178,7 @@ model Tests {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  lessons Lessons @relation(fields: [lessonsId], references: [id])
+  lessons Lessons @relation(fields: [lessonsId], references: [id], onDelete: Cascade)
 
   @@map("tests")
 }

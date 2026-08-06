@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './core/database/prisma.module';
 import { SeederModule } from './core/seeders/seeder.module';
-import { UsersModule } from './modules/users/users.module';
+import { AdminsModule } from './modules/admin/admins.module';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from './modules/auth/auth.module';
+import { TeachersModule } from './modules/teachers/teachers.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 
 @Module({
   imports: [
@@ -17,8 +19,10 @@ import { AuthModule } from './modules/auth/auth.module';
     }),
     PrismaModule,
     SeederModule,
-    UsersModule,
     AuthModule,
+    AdminsModule,
+    TeachersModule,
+    CategoriesModule,
   ],
 })
 export class AppModule {}
