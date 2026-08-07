@@ -43,11 +43,15 @@ export class AdminsService {
   }
   
   async searchAdmin(full_name:string){
+    if(!full_name?.trim()){
+      return { success: true, data: [] };
+    }
+
     const admins= await this.prisma.user.findMany({
       where:{
         role:UserRole.ADMIN,
         full_name:{
-          contains:full_name,
+          contains:full_name.trim(),
           mode:'insensitive'
         }
       },

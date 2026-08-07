@@ -78,6 +78,45 @@ export class TeachersService {
     }
   }
   
+  async searchTeacher(name:string){
+    if(!name?.trim()){
+      return { success: true, data: [] };
+    }
+    const teacher = await this.prisma.user.findMany({
+      where:{
+        role:UserRole.TEACHER,
+        full_name:{
+          contains:name.trim(),
+          mode:"insensitive"
+        },
+      },
+      select: {
+        id: true,
+        full_name: true,
+        phone: true,
+        file:true,
+        role: true,
+        teacherProfiles: {
+          select: {
+            experience: true,
+            job: true,
+            website: true,
+            facebook: true,
+            telegram: true,
+            linkedin: true,
+            instagram: true,
+            github: true,
+          }
+        }
+      }
+    })
+    
+    return {
+      success:true,
+      data:teacher
+    }
+  }
+  
   async createTeacher(payload: CreateTeacherDto, filename?:string) {
     const existTeacher = await this.prisma.user.findUnique({
       where:{

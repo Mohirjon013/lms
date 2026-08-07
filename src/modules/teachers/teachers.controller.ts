@@ -35,6 +35,21 @@ export class TeachersController {
   }
   
   // Get all teacher endpoint end
+
+
+  // Search teachers endpoint start
+  
+  @UseGuards(AuthGuard, RoleGuard)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @ApiOperation({
+    summary:`${UserRole.SUPERADMIN} ${UserRole.ADMIN}`
+  })
+  @Get('/search')
+  searchTeacher(@Query('name') name: string) {
+    return this.teachersService.searchTeacher(name);
+  }
+  
+  // Search teachers endpoint end
   
   
   // Get one teacher endpoint start
@@ -73,7 +88,7 @@ export class TeachersController {
   @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiOperation({
     summary:`${UserRole.SUPERADMIN} ${UserRole.ADMIN}`,
-    description:"BU endpoint"
+    description: 'Only admin can retrieve all users.'
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
