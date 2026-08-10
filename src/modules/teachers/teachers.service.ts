@@ -29,6 +29,7 @@ export class TeachersService {
           role: true,
           teacherProfiles: {
             select: {
+              id:true,
               experience: true,
               job: true,
               website: true,

@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { NotFound } from 'src/common/config/error';
 
 @Injectable()
 export class CategoriesService {
@@ -51,7 +52,7 @@ export class CategoriesService {
     })
     
     if(!categories){
-      throw new NotFoundException("Category not found with this id")
+      NotFound("Category")
     }
     
     return {

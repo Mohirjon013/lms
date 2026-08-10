@@ -87,7 +87,7 @@ export class TeachersController {
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiOperation({
-    summary:`${UserRole.SUPERADMIN} ${UserRole.ADMIN}`,
+    summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}`,
     description: 'Only admin can retrieve all users.'
   })
   @ApiConsumes('multipart/form-data')
