@@ -131,11 +131,14 @@ export class SectionsService {
             if(!course) NotFound("Course")
             }
         
-        const existingName = await this.prisma.sections.findUnique({
-            where:{name:payload.name}
-        })
-        if(existingName) throw new ConflictException(`Section with name "${payload.name}" already exists`)
-            
+        if(payload.name){
+            const existingName = await this.prisma.sections.findUnique({
+                where:{name:payload.name}
+            })
+            if(existingName) throw new ConflictException(`Section with name "${payload.name}" already exists`)
+        }
+        
+        
         await this.prisma.sections.update({
             where:{id},
             data:{

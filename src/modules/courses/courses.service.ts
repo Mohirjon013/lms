@@ -159,7 +159,7 @@ export class CoursesService {
         
         return {
             success:true,
-            data:course
+            data:"Create course successfully!"
         }
     }
     
