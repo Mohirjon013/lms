@@ -32,8 +32,30 @@ export class SectionsController {
         return this.sectionService.getAllSections(page,limit)
     }
     
-    // Get all sections end 
+    // Get all sections end
+
     
+    // Get sections by categoryID start
+    
+    @UseGuards(AuthGuard, RoleGuard)
+    @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
+    @ApiQuery({name:'page', required:false, example:1})
+    @ApiQuery({name:'limit', required:false, example:10})
+    @ApiOperation({
+        summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`
+    })
+    @Get('/all/categories/:categoryId')
+    getSectionByCategory(
+        @Param('categoryId', ParseIntPipe) categoryId:number,
+        @Query('page') page:number = 1,
+        @Query('limit') limit:number = 10
+        
+    ){
+        return this.sectionService.getSectionByCategory(page,limit, categoryId)
+    }
+    
+    // Get sections by categoryID end
+
     
     // Search sections start
     

@@ -21,11 +21,42 @@ enum CourseLevel {
   ADVANCED
 }
 
+enum PaidVia {
+  PAYME
+  CLICK
+  CASH
+}
+
 enum Answer {
   variantA
   variantB
   variantC
   variantD
+}
+
+enum HomeworkSubStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  FREEZE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+}
+
+enum NotificationType {
+  NEW_QUESTION
+  NEW_ANSWER
+  NEW_HOMEWORK_SUBMISSION
+  HOMEWORK_REVIEWED
+  SYSTEM_MESSAGE
 }
 
 model User {
@@ -39,15 +70,25 @@ model User {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  teacherProfiles TeacherProfile[]
-  courses         Courses[]
+  teacherProfile      TeacherProfile?
+  courses             Courses[]
+  purchasedCourses    PurchasedCourse[]
+  ratings             Rating[]
+  lastActivity        LastActivity?
+  homeworkSubmissions HomeworkSubmission[]
+  testResults         TestResult[]
+  lessonViews         LessonView[]
+  notifications       Notification[]
+  lessonRatings       LessonRating[]
+  questions           Question[]
+  questionAnswers     QuestionAnswer[]
 
   @@map("user")
 }
 
 model TeacherProfile {
   id          Int      @id @default(autoincrement())
-  userId      Int
+  userId      Int      @unique
   experience  Float?
   job         String?
   website     String?
@@ -66,6 +107,17 @@ model TeacherProfile {
   @@map("teacher_profile")
 }
 
+// model AssignedCourse {
+//   id       Int @id @default(autoincrement())
+//   userId   Int
+//   courseId Int
+
+//   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   course     Courses  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+//   created_at DateTime @default(now())
+//   updated_at DateTime @updatedAt
+// }
+
 model Categories {
   id   Int    @id @default(autoincrement())
   name String @unique
@@ -81,27 +133,44 @@ model Courses {
   id           Int         @id @default(autoincrement())
   assistantId  Int?
   teacherId    Int
-  name         String      @unique
+  name         String
   banner       String
   intro_video  String
   description  String
   price        Decimal
   level        CourseLevel
+  status       Status      @default(INACTIVE)
   categoriesId Int
   created_at   DateTime    @default(now())
   updated_at   DateTime    @updatedAt
 
-  categories      Categories     @relation(fields: [categoriesId], references: [id], onDelete: Cascade)
-  user            User?          @relation(fields: [assistantId], references: [id], onDelete: Cascade)
-  teacher_profile TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  sections        Sections[]
+  categories       Categories        @relation(fields: [categoriesId], references: [id], onDelete: Cascade)
+  assistant        User?             @relation(fields: [assistantId], references: [id], onDelete: SetNull)
+  teacher_profile  TeacherProfile    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  sections         Sections[]
+  purchasedCourses PurchasedCourse[]
+  ratings          Rating[]
 
   @@map("courses")
 }
 
+model PurchasedCourse {
+  userId      Int
+  courseId    Int
+  amount      Decimal?
+  paidVia     PaidVia?
+  status      PaymentStatus @default(PENDING)
+  purchasedAt DateTime      @default(now())
+  user        User          @relation(references: [id], fields: [userId], onDelete: Cascade)
+  course      Courses       @relation(references: [id], fields: [courseId], onDelete: Cascade)
+
+  @@id([userId, courseId])
+  @@map("purchased_course")
+}
+
 model Sections {
   id         Int      @id @default(autoincrement())
-  name       String   @unique
+  name       String
   coursesId  Int
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -109,24 +178,88 @@ model Sections {
   course  Courses   @relation(fields: [coursesId], references: [id], onDelete: Cascade)
   lessons Lessons[]
 
+  @@unique([coursesId, name])
   @@map("sections")
+}
+
+model Rating {
+  id         Int      @id @default(autoincrement())
+  rate       Int
+  comment    String
+  courseId   Int
+  userId     Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  course Courses @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId]) // bir student bir kursga 1 sharh (ko'p bo'lsa olib tashla)
+  @@map("rating")
+}
+
+model LastActivity {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @unique
+  courseId   Int?
+  sectionId  Int?
+  lessonId   Int?
+  url        String?
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("last_activity")
 }
 
 model Lessons {
   id          Int      @id @default(autoincrement())
-  name        String   @unique
+  name        String
   sectionsId  Int
   description String
   file        String
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  section   Sections    @relation(fields: [sectionsId], references: [id], onDelete: Cascade)
-  materials Materials[]
-  homeworks Homeworks[]
-  tests     Tests[]
+  section       Sections       @relation(fields: [sectionsId], references: [id], onDelete: Cascade)
+  materials     Materials[]
+  homeworks     Homeworks[]
+  tests         Tests[]
+  testResults   TestResult[]
+  lessonViews   LessonView[]
+  lessonRatings LessonRating[]
+  questions     Question[]
 
+  @@unique([sectionsId, name])
   @@map("lessons")
+}
+
+// Dars reytingi (faqat yulduz). Video ostidagi "Darsni baholash".
+model LessonRating {
+  id         Int      @id @default(autoincrement())
+  rate       Int
+  lessonId   Int
+  userId     Int
+  created_at DateTime @default(now())
+
+  lesson Lessons @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, userId]) // bir user bir darsga 1 marta baho
+  @@map("lesson_rating")
+}
+
+// Kim qaysi darsni tugatgan (chap paneldagi ✓ belgisi)
+model LessonView {
+  lessonId Int
+  userId   Int
+  view     Boolean @default(true)
+
+  lesson Lessons @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, userId]) // bir user + bir dars = bitta qator
+  @@map("lesson_view")
 }
 
 model Materials {
@@ -136,7 +269,7 @@ model Materials {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  lessons Lessons         @relation(fields: [lessonsId], references: [id])
+  lessons Lessons         @relation(fields: [lessonsId], references: [id], onDelete: Cascade)
   files   MaterialFiles[]
 
   @@map("materials")
@@ -160,9 +293,27 @@ model Homeworks {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  lessons Lessons @relation(fields: [lessonsId], references: [id])
+  lessons             Lessons              @relation(fields: [lessonsId], references: [id], onDelete: Cascade)
+  homeworkSubmissions HomeworkSubmission[]
 
   @@map("homeworks")
+}
+
+model HomeworkSubmission {
+  id         Int               @id @default(autoincrement())
+  text       String?
+  file       String
+  reason     String? // rad etilsa — sababi
+  status     HomeworkSubStatus @default(PENDING)
+  homeworkId Int
+  userId     Int
+  created_at DateTime          @default(now())
+  updated_at DateTime          @updatedAt
+
+  homework Homeworks @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("homework_submission")
 }
 
 model Tests {
@@ -181,4 +332,73 @@ model Tests {
   lessons Lessons @relation(fields: [lessonsId], references: [id], onDelete: Cascade)
 
   @@map("tests")
+}
+
+model TestResult {
+  id         Int      @id @default(autoincrement())
+  lessonsId  Int
+  userId     Int
+  passed     Boolean
+  corrects   Int
+  wrongs     Int
+  created_at DateTime @default(now())
+
+  lessons Lessons @relation(fields: [lessonsId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("test_result")
+}
+
+// Student dars bo'yicha savol beradi. Admin "Savollar" ekrani.
+model Question {
+  id         Int       @id @default(autoincrement())
+  userId     Int // kim so'radi (student)
+  lessonId   Int // qaysi dars bo'yicha
+  text       String
+  file       String?
+  read       Boolean   @default(false) // admin ko'rdimi ("O'qilgan")
+  read_at    DateTime?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lessons         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  answer QuestionAnswer?
+
+  @@map("question")
+}
+
+// Mentor/assistant savolga javob beradi.
+model QuestionAnswer {
+  id         Int      @id @default(autoincrement())
+  questionId Int      @unique // 1 savol = 1 javob (one-to-one)
+  userId     Int // kim javob berdi
+  text       String
+  file       String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("question_answer")
+}
+
+// Bildirishnoma. entityType+entityId = polimorfik pointer (turli jadvalga ishora)
+model Notification {
+  id         Int              @id @default(autoincrement())
+  userId     Int
+  type       NotificationType
+  message    String
+  entityType String? // "question" | "homework_submission" | ...
+  entityId   Int? // tegishli yozuv id'si (havola qurish uchun)
+  read       Boolean          @default(false)
+  read_at    DateTime?
+  created_at DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read]) // o'qilmagan sonini tez sanash uchun
+  @@index([userId, created_at]) // vaqt bo'yicha tez saralash uchun
+  @@map("notification")
 }

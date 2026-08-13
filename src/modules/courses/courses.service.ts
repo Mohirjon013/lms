@@ -63,7 +63,7 @@ export class CoursesService {
                         }
                     }
                 },
-                user:true
+                assistant:true
             }
         })
         

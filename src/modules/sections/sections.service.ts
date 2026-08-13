@@ -3,6 +3,8 @@ import { CreateSectionDto } from './dto/create-section.dto';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { NotFound } from 'src/common/config/error';
 import { UpdateSectionDto } from './dto/update-section.dto';
+import { reportUnhandledError } from 'rxjs/internal/util/reportUnhandledError';
+import { dateTimestampProvider } from 'rxjs/internal/scheduler/dateTimestampProvider';
 
 @Injectable()
 export class SectionsService {
@@ -30,6 +32,43 @@ export class SectionsService {
             limit:Number(limit),
             data:section
         }
+    }
+    
+    async getSectionByCategory(page:number,limit:number, categoryId:number){
+        const existCategoryID = await this.prisma.categories.findUnique({
+            where:{id:categoryId}
+        })
+        if(!existCategoryID) NotFound("Category");
+
+
+        const skip = (page - 1) * limit
+        const [categories, total] = await this.prisma.$transaction([
+            this.prisma.sections.findMany({
+                skip,
+                take:Number(limit),
+                where:{
+                    course:{
+                        categoriesId:categoryId
+                    }
+                }
+            }),
+            this.prisma.sections.count({
+                where:{
+                    course:{
+                        categoriesId:categoryId
+                    }
+                }
+            })
+        ])
+        
+        return {
+            success:true,
+            total,
+            page:Number(page),
+            limit:Number(limit),
+            data:categories
+        }
+        
     }
     
     async getOneSection(id:number){
@@ -136,7 +175,7 @@ export class SectionsService {
                 where:{name:payload.name}
             })
             if(existingName) throw new ConflictException(`Section with name "${payload.name}" already exists`)
-        }
+            }
         
         
         await this.prisma.sections.update({
