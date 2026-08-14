@@ -10,6 +10,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { CoursesModule } from './modules/courses/courses.module';
 import { SectionsModule } from './modules/sections/sections.module';
 import { LessonsModule } from './modules/lessons/lessons.module';
+import { PaymentModule } from './modules/payment/payment.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { LessonsModule } from './modules/lessons/lessons.module';
     CoursesModule,
     SectionsModule,
     LessonsModule,
+    PaymentModule,
   ],
 })
 export class AppModule {}

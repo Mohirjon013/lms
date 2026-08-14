@@ -69,9 +69,9 @@ export class CoursesController {
     // delete course start
 
     @UseGuards(AuthGuard, RoleGuard)
-    @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+    @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
     @ApiOperation({
-        summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}`
+        summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`
     })
     @Delete(':id')
     deleteCourse(@Param('id', ParseIntPipe) id:number){
@@ -84,9 +84,9 @@ export class CoursesController {
     // Update course start
     
     @UseGuards(AuthGuard, RoleGuard)
-    @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+    @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
     @ApiOperation({
-        summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}`
+        summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`
     })
     @ApiConsumes('multipart/form-data')
     @ApiBody({
@@ -197,9 +197,9 @@ export class CoursesController {
     // create course start
     
     @UseGuards(AuthGuard, RoleGuard)
-    @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+    @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
     @ApiOperation({
-        summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}`
+        summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`
     })
     @ApiConsumes('multipart/form-data')
     @ApiBody({

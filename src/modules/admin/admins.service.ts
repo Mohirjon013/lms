@@ -26,6 +26,7 @@ export class AdminsService {
           phone:true,
           file:true,
           role:true,
+          status:true,
           created_at:true
         }
       }),
@@ -46,7 +47,7 @@ export class AdminsService {
     if(!full_name?.trim()){
       return { success: true, data: [] };
     }
-
+    
     const admins= await this.prisma.user.findMany({
       where:{
         role:UserRole.ADMIN,
@@ -58,8 +59,10 @@ export class AdminsService {
       select:{
         id: true,
         full_name: true,
+        file:true,
         phone: true,
         role: true,
+        status:true,
         created_at: true
       }
     })
@@ -105,7 +108,7 @@ export class AdminsService {
     
     if (existAdmin) {
       throw new ConflictException(
-        'Admin already exists with this phone or email',
+        'Admin already exists with this phone',
       );
     }
     
@@ -130,7 +133,7 @@ export class AdminsService {
       where:{id}
     })
     
-    if(!existAdmin){
+    if(!existAdmin || existAdmin?.role !== UserRole.ADMIN){
       throw new NotFoundException("Admin not found with this id")
     }
     
@@ -138,8 +141,13 @@ export class AdminsService {
       throw new ForbiddenException("You can only update your own profile")
     }
     
-    if(existAdmin.role === UserRole.SUPERADMIN && currentUser.role !== UserRole.SUPERADMIN){
-      throw new ForbiddenException("You cannot update SUPERADMIN")
+    if (payload.phone && payload.phone !== existAdmin.phone) {
+      const phoneTaken = await this.prisma.user.findUnique({
+        where: { phone: payload.phone }
+      })
+      if (phoneTaken) {
+        throw new ConflictException("This phone number is already in use")
+      }
     }
     
     if(existAdmin.file && filename){
@@ -155,6 +163,7 @@ export class AdminsService {
         ...(payload.full_name && { full_name: payload.full_name }),
         ...(payload.phone && { phone: payload.phone }),
         ...(payload.password && { password: await hashPassword(payload.password) }),
+        ...(payload.status && {status: payload.status}),
         ...(filename && { file: filename }),
       }
     })

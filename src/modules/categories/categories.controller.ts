@@ -16,11 +16,11 @@ export class CategoriesController {
   // get all categories start
   
   @UseGuards(AuthGuard, RoleGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiQuery({name:'page', required:false, example:1})
   @ApiQuery({name:'limit', required:false, example:10})
   @ApiOperation({
-    summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN} , ${UserRole.TEACHER}`,
+    summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}`,
   })
   @Get('/all')
   findAllCategories(
@@ -36,9 +36,9 @@ export class CategoriesController {
   // search categories start
   
   @UseGuards(AuthGuard, RoleGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiOperation({
-    summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`,
+    summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}`,
   })
   @Get('/search')
   searchCategories(@Query('name') name:string) {
@@ -51,9 +51,9 @@ export class CategoriesController {
   // get one category start
   
   @UseGuards(AuthGuard, RoleGuard)
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiOperation({
-    summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`,
+    summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}`,
   })
   @Get(':id')
   getOneCategories(@Param('id', ParseIntPipe) id: number) {

@@ -151,6 +151,7 @@ export class TeachersController {
         full_name: { type: 'string' },
         phone: { type: 'string' },
         password: { type: 'string' },
+        status: { type: 'string', enum: ['ACTIVE', 'INACTIVE', 'FREEZE'] },
         file: { type: 'string', format: 'binary' },
         experience: { type: 'number' },
         job: { type: 'string' },

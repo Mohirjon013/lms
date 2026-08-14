@@ -26,7 +26,6 @@ import {
   ApiConsumes,
   ApiOperation,
   ApiQuery,
-  ApiTags,
 } from '@nestjs/swagger';
 import { UpdateAdminDto } from './dto/update-admin.dto';
 import { JwtPayload } from 'src/common/config/jwt';
@@ -139,6 +138,7 @@ export class AdminsController {
         full_name: { type: 'string' },
         phone: { type: 'string' },
         password: { type: 'string' },
+        status:{ type: 'string', enum:['ACTIVE', 'INACTIVE', 'FREEZE']},
         file: { type: 'string', format: 'binary' },
       },
     },

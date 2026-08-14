@@ -24,7 +24,8 @@ export class AuthGuard implements CanActivate {
       });
 
       req.user = user;
-
+      console.log(token);
+      
       return true;
     } catch (error) {
       console.log(error);

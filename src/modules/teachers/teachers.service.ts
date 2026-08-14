@@ -26,20 +26,8 @@ export class TeachersService {
           full_name: true,
           phone: true,
           file:true,
+          status: true,
           role: true,
-          teacherProfiles: {
-            select: {
-              id:true,
-              experience: true,
-              job: true,
-              website: true,
-              facebook: true,
-              telegram: true,
-              linkedin: true,
-              instagram: true,
-              github: true,
-            }
-          }
         }
       }),
       
@@ -64,8 +52,21 @@ export class TeachersService {
         phone: true,
         file: true,
         role: true,
+        status:true,
         created_at: true,
-        teacherProfiles: true
+        teacherProfile: {
+          select: {
+            id:true,
+            experience: true,
+            job: true,
+            website: true,
+            facebook: true,
+            telegram: true,
+            linkedin: true,
+            instagram: true,
+            github: true,
+          }
+        }
       }
     })
     
@@ -97,7 +98,7 @@ export class TeachersService {
         phone: true,
         file:true,
         role: true,
-        teacherProfiles: {
+        teacherProfile: {
           select: {
             experience: true,
             job: true,
@@ -136,9 +137,9 @@ export class TeachersService {
         password: await hashPassword(payload.password),
         file:filename,
         role:UserRole.TEACHER,
-        teacherProfiles:{
+        teacherProfile:{
           create:{
-            experience: Number(payload.experience) ?? null,
+            experience: payload.experience ? Number(payload.experience) : null,
             job: payload.job ?? null,
             website: payload.website ?? null,
             description: payload.description ?? null,
@@ -161,7 +162,7 @@ export class TeachersService {
   }
   
   async updateTeacher(id:number, payload:UpdateTeacherDto, currentUser:JwtPayload, filename?:string){
-    const { full_name, phone, password, experience, job, website, description, facebook, telegram, linkedin, instagram, github } = payload;
+    const { full_name, phone, status, password, experience, job, website, description, facebook, telegram, linkedin, instagram, github } = payload;
     
     
     const teacher = await this.prisma.user.findFirst({
@@ -170,11 +171,20 @@ export class TeachersService {
     
     
     if(!teacher){
-      throw new NotFoundException("Admin not found with this id")
+      throw new NotFoundException("Teacher not found with this id")
     }
     
     if(currentUser.role === UserRole.TEACHER && currentUser.id !== id){
       throw new ForbiddenException("You can only update your own profile")
+    }
+    
+    if(phone && phone !== teacher.phone){
+      const phoneTaken = await this.prisma.user.findUnique({
+        where: { phone }
+      })
+      if (phoneTaken) {
+        throw new ConflictException("This phone number is already in use")
+      }
     }
     
     if(teacher.file && filename){
@@ -191,6 +201,7 @@ export class TeachersService {
         ...(full_name && {full_name}),
         ...(phone && { phone }),
         ...(password && { password: await hashPassword(password) }),
+        ...(status && { status }),  
         ...(filename && { file: filename })
       }
     })

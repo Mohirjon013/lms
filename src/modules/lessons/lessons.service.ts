@@ -83,11 +83,11 @@ export class LessonsService {
         
         if(!sectionId) NotFound("Section")
             
-        const existingName = await this.prisma.lessons.findUnique({
-            where:{name:payload.name}
-        })
+        // const existingName = await this.prisma.lessons.findUnique({
+        //     where:{name:payload.name}
+        // })
         
-        if(existingName) throw new ConflictException(`Lesson with name "${payload.name}" already exists`)
+        // if(existingName) throw new ConflictException(`Lesson with name "${payload.name}" already exists`)
             
         if(!filename) throw new BadRequestException('File is required');
         
@@ -119,12 +119,12 @@ export class LessonsService {
             if(!section) NotFound("Section")
             }
         
-        if(payload.name){
-            const existingName = await this.prisma.lessons.findUnique({
-                where:{ name: payload.name }
-            })
-            if(existingName) throw new ConflictException(`Lesson with name "${payload.name}" already exists`);
-        }
+        // if(payload.name){
+        //     const existingName = await this.prisma.lessons.findUnique({
+        //         where:{ name: payload.name }
+        //     })
+        //     if(existingName) throw new ConflictException(`Lesson with name "${payload.name}" already exists`);
+        // }
         
         await this.prisma.lessons.update({
             where:{ id },
