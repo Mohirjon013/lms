@@ -29,10 +29,17 @@ export class LessonsService {
         }
     }
     
-    async getAllLesson(page:number,limit:number){
+    async getAllLesson(page:number,limit:number, user:JwtPayload){
         const skip = (page - 1) * limit 
+        
+        const where = user.role === UserRole.TEACHER
+        ? { section: { course: { teacher_profile: { userId: user.id } } } }
+        : {};
+        
+        
         const [lesson, total] = await this.prisma.$transaction([
             this.prisma.lessons.findMany({
+                where,
                 skip, take:Number(limit),
                 select:{
                     id:true, 
@@ -42,7 +49,7 @@ export class LessonsService {
                     sectionsId:true
                 }
             }),
-            this.prisma.lessons.count()
+            this.prisma.lessons.count({where})
         ])
         
         
@@ -55,12 +62,7 @@ export class LessonsService {
         }
     }
     
-    async getOneLesson(id:number){
-        const existLesson = await this.prisma.lessons.findUnique({
-            where:{ id }
-        })
-        if(!existLesson) NotFound("Lesson") 
-            
+    async getOneLesson(id:number, user:JwtPayload){
         const lesson = await this.prisma.lessons.findUnique({
             where:{id},
             select:{
@@ -71,7 +73,9 @@ export class LessonsService {
                 sectionsId:true
             }
         })
+        if(!lesson) NotFound("Lesson");
         
+        await this.checkSectionOwnership(lesson.sectionsId, user);
         
         return {
             success:true,
@@ -79,12 +83,34 @@ export class LessonsService {
         }
     }
     
+    async getLessonBySection(page: number, limit: number, sectionId: number, user: JwtPayload) {
+        const section = await this.prisma.sections.findUnique({
+            where: { id: sectionId },
+        });
+        if (!section) NotFound("Section");
+        
+        await this.checkSectionOwnership(sectionId, user);
+        
+        const skip = (page - 1) * limit;
+        const [lessons, total] = await this.prisma.$transaction([
+            this.prisma.lessons.findMany({
+                skip,
+                take: Number(limit),
+                where: { sectionsId: sectionId },
+                select: { id: true, name: true, description: true, file: true, sectionsId: true },
+            }),
+            this.prisma.lessons.count({ where: { sectionsId: sectionId } }),
+        ]);
+        
+        return { success: true, total, page: Number(page), limit: Number(limit), data: lessons };
+    }
+    
     async deleteLesson(id:number, user: JwtPayload){
         const existLesson = await this.prisma.lessons.findUnique({
             where:{ id }
         })
         if(!existLesson) NotFound("Lesson");
-
+        
         await this.checkSectionOwnership(existLesson.sectionsId , user)
         
         await this.prisma.lessons.delete({
@@ -98,7 +124,7 @@ export class LessonsService {
     }
     
     async createLesson(payload:CreateLessonDto, user:JwtPayload, filename?:string){
-
+        
         const sectionId = await this.prisma.sections.findUnique({
             where:{
                 id:payload.sectionsId
@@ -138,6 +164,17 @@ export class LessonsService {
         if(!existLesson) NotFound("Lesson");
         
         await this.checkSectionOwnership(existLesson.sectionsId, user);
+        
+        if(payload.sectionsId){
+            const section = await this.prisma.sections.findUnique({
+                where:{
+                    id:payload.sectionsId
+                }
+            })
+            if (!section) NotFound("Section");
+            
+            await this.checkSectionOwnership(payload.sectionsId, user);
+        }
         
         if (payload.name || payload.sectionsId) {
             const targetName = payload.name ?? existLesson?.name;

@@ -35,8 +35,8 @@ export class TeachersController {
   }
   
   // Get all teacher endpoint end
-
-
+  
+  
   // Search teachers endpoint start
   
   @UseGuards(AuthGuard, RoleGuard)
@@ -120,8 +120,11 @@ export class TeachersController {
           const filename = new Date().getTime() + '.' + file.mimetype.split('/')[1];
           
           cb(null, filename)
-        }
-      })
+        },
+      }),
+      limits:{
+        fileSize: 2 * 1024 * 1024, // 2 MB
+      }
     })
   )
   createTeacher(
@@ -142,7 +145,7 @@ export class TeachersController {
     summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN},${UserRole.TEACHER}`,
     description:"BU endpoint"
   })
-
+  
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -173,7 +176,10 @@ export class TeachersController {
           const filename =new Date().getTime() + '.' + file.mimetype.split('/')[1];
           cb(null, filename);
         }
-      })
+      }),
+      limits:{
+        fileSize: 2 * 1024 * 1024, // 2 MB
+      }
     })
   )
   @Patch(':id')

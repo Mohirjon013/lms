@@ -16,7 +16,7 @@ import { JwtPayload } from 'src/common/config/jwt';
 export class LessonsController {
     constructor(private readonly lessonService:LessonsService){}
     
-
+    
     // Get all lessons start
     
     @UseGuards(AuthGuard, RoleGuard)
@@ -29,29 +29,56 @@ export class LessonsController {
     @Get('/all')
     getAllLesson(
         @Query('page') page:number = 1,
-        @Query('limit') limit:number = 10
+        @Query('limit') limit:number = 10,
+        @Req() req: Request & {user:JwtPayload}
+        
     ){
-        return this.lessonService.getAllLesson(page,limit)
+        return this.lessonService.getAllLesson(page,limit, req.user)
     }
     
     // Get all lessons end
-    
 
-    // Get one lesson start
+
+    // Get lessons by section start
 
     @UseGuards(AuthGuard, RoleGuard)
     @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
     @ApiOperation({
         summary: `${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`,
     })
-    @Get(':id')
-    getOneLesson(@Param('id', ParseIntPipe) id:number){
-        return this.lessonService.getOneLesson(id)
+    @Get("/section/:sectionId")
+    getLessonBySection(
+        @Query('page') page:number = 1,
+        @Query('limit') limit:number = 10,
+        @Param('sectionId', ParseIntPipe) sectionId : number,
+        @Req() req: Request & {user:JwtPayload}
+
+    ){
+        return this.lessonService.getLessonBySection(page,limit,sectionId, req.user)
     }
 
+    // Get lessons by section end
+
+    
+    
+    // Get one lesson start
+    
+    @UseGuards(AuthGuard, RoleGuard)
+    @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
+    @ApiOperation({
+        summary: `${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`,
+    })
+    @Get(':id')
+    getOneLesson(
+        @Param('id', ParseIntPipe) id:number,
+        @Req() req: Request & {user:JwtPayload}
+    ){
+        return this.lessonService.getOneLesson(id, req.user)
+    }
+    
     // Get one lesson end
-
-
+    
+    
     // Delete lesson start 
     
     @UseGuards(AuthGuard, RoleGuard)
@@ -66,9 +93,9 @@ export class LessonsController {
     ){
         return this.lessonService.deleteLesson(id, req.user)
     }
-
+    
     // Delete lesson end
-
+    
     
     // Create lesson start 
     
@@ -101,7 +128,7 @@ export class LessonsController {
                 },
             }),
             limits:{
-                fileSize:50 * 1024 * 1024
+                fileSize:5 * 1024 * 1024
             },
             fileFilter:(req,file,cb) => {
                 if (file.mimetype !== 'video/mp4') {
@@ -127,7 +154,7 @@ export class LessonsController {
     
     
     // Update lesson start 
-
+    
     @UseGuards(AuthGuard, RoleGuard)
     @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
     @ApiOperation({
@@ -157,7 +184,7 @@ export class LessonsController {
                 },
             }),
             limits:{
-                fileSize:50 * 1024 * 1024
+                fileSize:5 * 1024 * 1024
             },
             fileFilter:(req,file,cb) => {
                 if (file.mimetype !== 'video/mp4') {

@@ -35,29 +35,29 @@ import { AdminsService } from './admins.service';
 @Controller('admins')
 export class AdminsController {
   constructor(private readonly usersService: AdminsService) {}
-
+  
   // Get all teacher endpoint start
-
+  
   @ApiOperation({summary:`${UserRole.SUPERADMIN}`})
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.SUPERADMIN)
   @ApiQuery({name:'page', required:false, example:1})
   @ApiQuery({name:'limit', required:false, example:10})
-
+  
   @Get('/all')
   getAllAdmin(
     @Query('page') page:number = 1,
     @Query('limit') limit:number = 10,
-
+    
   ){
     return this.usersService.getAllAdmin(page,limit)
   }
-
+  
   // Get all teacher endpoint end
-
-
+  
+  
   // Search teacher endpoint start
-
+  
   @ApiOperation({summary:`${UserRole.SUPERADMIN}`})
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.SUPERADMIN)
@@ -65,12 +65,12 @@ export class AdminsController {
   searchAdmin(@Query('full_name') full_name:string){
     return this.usersService.searchAdmin(full_name)
   }
-
+  
   // Search teacher endpoint end
-
-
+  
+  
   // Delete teacher endpoint start
-
+  
   @ApiOperation({summary:`${UserRole.SUPERADMIN}`})
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.SUPERADMIN)
@@ -78,12 +78,12 @@ export class AdminsController {
   deleteAdmin(@Param('id', ParseIntPipe) id:number){
     return this.usersService.deleteAdmin(id)
   }
-
+  
   // Delete teacher endpoint end
-
-
+  
+  
   // Create teacher endpoint start
-
+  
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.SUPERADMIN)
   @ApiOperation({
@@ -112,6 +112,9 @@ export class AdminsController {
           cb(null, filename);
         },
       }),
+      limits: {
+        fileSize: 2 * 1024 * 1024, // 2 MB
+      },
     }),
   )
   createAdmin(
@@ -122,14 +125,14 @@ export class AdminsController {
   }
   
   // Create teacher endpoint end
-
-
+  
+  
   // Update Teacher endpoint start
-
+  
   @UseGuards(AuthGuard, RoleGuard)
   @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiOperation({summary: `${UserRole.SUPERADMIN} ${UserRole.ADMIN}`})
-
+  
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -151,7 +154,10 @@ export class AdminsController {
           const filename =new Date().getTime() + '.' + file.mimetype.split('/')[1];
           cb(null, filename);
         }
-      })
+      }),
+      limits: {
+        fileSize: 2 * 1024 * 1024, // 2 MB
+      },
     })
   )
   @Patch(":id")
@@ -163,7 +169,7 @@ export class AdminsController {
   ){
     return this.usersService.updateAdmin(payload, id, req.user, file?.filename)
   }
-
+  
   // Update Teacher endpoint end
-
+  
 }
