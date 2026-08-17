@@ -3,7 +3,7 @@ import { PrismaService } from 'src/core/database/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import * as argon from "argon2"
 import { JwtToken } from 'src/common/config/jwt';
-import { PaidVia, PaymentStatus, Status, UserRole } from '@prisma/client';
+import { PaymentStatus, Status, UserRole } from '@prisma/client';
 import { RegisterDto } from './dto/register.dto';
 import hashPassword from 'src/common/config/hash';
 
@@ -16,7 +16,7 @@ export class AuthService {
     ) {}
     
     async login(payload:LoginDto) {
-        const existUser = await this.prisma.user.findFirst({
+        const existUser = await this.prisma.user.findUnique({
             where: {
                 phone: payload.phone,
             },

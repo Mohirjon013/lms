@@ -15,7 +15,6 @@ export class RoleGuard implements CanActivate {
         const req = context.switchToHttp().getRequest();
         const role = this.reflactor.get('roles', context.getHandler());
         
-        // console.log(role, req.user);
         
         if (!role.includes(req.user.role)) {
             throw new ForbiddenException();

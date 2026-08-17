@@ -1,19 +1,28 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { CreateCourseDto } from './dto/create-course.dto';
-import { triggerAsyncId } from 'async_hooks';
 import { NotFound } from 'src/common/config/error';
 import { UpdateCourseDto } from './dto/update-course.dto';
+import { JwtPayload } from 'src/common/config/jwt';
+import { UserRole } from '@prisma/client';
+import { join } from 'path';
+import fs from "fs"
 
 @Injectable()
 export class CoursesService {
     constructor(private prisma:PrismaService){}
     
     
-    async getAllCourse(page:number, limit:number){
+    async getAllCourse(page:number, limit:number, user:JwtPayload){
         const skip = (page-1) * limit
+        
+        const where = user.role === UserRole.TEACHER
+        ? { teacher_profile: { userId: user.id } }
+        : {};
+        
         const [course, total] = await this.prisma.$transaction([
             this.prisma.courses.findMany({
+                where,
                 skip,
                 take:Number(limit),
                 select:{
@@ -22,10 +31,20 @@ export class CoursesService {
                     name:true,
                     level:true,
                     price:true,
-                    categories:true
+                    categories:true,
+                    teacher_profile:{
+                        select:{
+                            id:true,
+                            user:{
+                                select:{
+                                    full_name:true,
+                                }
+                            }
+                        }
+                    }
                 }
             }),
-            this.prisma.courses.count()
+            this.prisma.courses.count({where})
         ])
         
         return {
@@ -47,6 +66,7 @@ export class CoursesService {
                 name:true,
                 level:true,
                 price:true,
+                description:true,
                 categories:{
                     select:{
                         id:true,
@@ -63,7 +83,12 @@ export class CoursesService {
                         }
                     }
                 },
-                assistant:true
+                assistant:{
+                    select:{
+                        id:true,
+                        full_name:true
+                    }
+                }
             }
         })
         
@@ -77,16 +102,19 @@ export class CoursesService {
         
     }
     
-    async searchCourse(name:string){
+    async searchCourse(name:string, user:JwtPayload){
         if(!name?.trim()) return {success:true, data: []}
         
+        const where: any = {
+            name: { contains: name.trim(), mode: "insensitive" }
+        }
+        
+        if (user.role === UserRole.TEACHER) {
+            where.teacher_profile = { userId: user.id }
+        }
+        
         const course = await this.prisma.courses.findMany({
-            where:{
-                name:{
-                    contains:name.trim(),
-                    mode:"insensitive"
-                }
-            },
+            where,
             select:{
                 id:true,
                 banner:true,
@@ -102,40 +130,60 @@ export class CoursesService {
             data: course
         }
     }
-
+    
     async deleteCourse(id:number){
         const course = await this.prisma.courses.findUnique({
             where:{id}
         })
-
+        
         if(!course) NotFound("Course")
-
+            
         await this.prisma.courses.delete({
             where:{id}
         })
-
+        
         return {
             success:true,
             message:"Delete course successfully!"
         }
     }
     
-    async createCourse(payload:CreateCourseDto, files:{ banner?: Express.Multer.File[]; intro_video?: Express.Multer.File[] }){
+    async createCourse(payload:CreateCourseDto, user:JwtPayload, files:{ banner?: Express.Multer.File[]; intro_video?: Express.Multer.File[] }){
+        let targetTeacherId:number
+        
+        if(user.role === UserRole.TEACHER){
+            targetTeacherId = user.id
+        }
+        else{
+            if(!payload.teacherId){
+                throw new BadRequestException('teacherId is required when admin creates a course');
+            }
+            targetTeacherId = Number(payload.teacherId)
+        }
+        
+        
+        
         const teacher = await this.prisma.teacherProfile.findUnique({
-            where: { id: Number(payload.teacherId) },
+            where: { userId: Number(targetTeacherId) },
         });
-        if (!teacher) throw new NotFoundException(`Teacher with id "${payload.teacherId}" not found`);
+        
+        
+        if (!teacher) throw new NotFoundException(`Teacher with id "${targetTeacherId}" not found`);
         
         const category = await this.prisma.categories.findUnique({
             where: { id: payload.categoriesId },
         });
         if (!category) throw new NotFoundException(`Category with id "${payload.categoriesId}" not found`);
         
-        if (payload.assistantId) {
-            const assistant = await this.prisma.user.findUnique({
-                where: { id: payload.assistantId },
-            });
-            if (!assistant) throw new NotFoundException(`Assistant with id "${payload.assistantId}" not found`);
+        
+        const existCourse = await this.prisma.courses.findFirst({
+            where: {
+                name: payload.name,
+                categoriesId: Number(payload.categoriesId),
+            },
+        });
+        if (existCourse) {
+            throw new ConflictException('A course with this name already exists in this category');
         }
         
         const banner = files?.banner?.[0]?.filename;
@@ -152,8 +200,7 @@ export class CoursesService {
                 banner,
                 intro_video,
                 categories:{connect: {id: payload.categoriesId}},
-                teacher_profile:{connect: {id: Number(payload.teacherId)}},
-                ...(payload.assistantId && {user: {connect: {id: payload.assistantId}}})
+                teacher_profile:{connect: {id: teacher.id}},
             }
         })
         
@@ -163,40 +210,71 @@ export class CoursesService {
         }
     }
     
-    async updateCourse(payload:UpdateCourseDto, id:number, 
+    async updateCourse(payload:UpdateCourseDto, id:number, user:JwtPayload,
         files:{
             banner?:Express.Multer.File[]
             intro_video?:Express.Multer.File[]
         }
     ){
+        
         const course = await this.prisma.courses.findUnique({
-            where: { id }
+            where: { id },
+            include: { teacher_profile: true }
         });
         if(!course) NotFound("Course")
             
-        if (payload.teacherId) {
-            const teacher = await this.prisma.teacherProfile.findUnique({
-                where: { id:payload.teacherId }
-            });
-            if (!teacher) throw new NotFoundException(`Teacher with id "${payload.teacherId}" not found`);
+        if(user.role === UserRole.TEACHER){
+            if(course?.teacher_profile.userId !== user.id){
+                throw new ForbiddenException('You can only update your own course');
+            }
         }
         
         if (payload.categoriesId) {
             const category = await this.prisma.categories.findUnique({
-                where: { id: payload.categoriesId }
+                where: { id: Number(payload.categoriesId) },
             });
-            if (!category) throw new NotFoundException(`Category with id "${payload.categoriesId}" not found`);
+            if (!category) {
+                throw new NotFoundException(`Category with id "${payload.categoriesId}" not found`);
+            }
+            
         }
         
         if (payload.assistantId) {
-            const assistant = await this.prisma.user.findUnique({
-                where: { id: payload.assistantId }
+            const assistant = await this.prisma.user.findFirst({
+                where: { id: Number(payload.assistantId) , role:UserRole.ASSISTANT},
             });
-            if (!assistant) throw new NotFoundException(`Assistant with id "${payload.assistantId}" not found`);
+            if (!assistant) {
+                throw new NotFoundException(`Assistant with id "${payload.assistantId}" not found`);
+            }
+        }
+        
+        if (payload.name || payload.categoriesId) {
+            const targetName = payload.name ?? course?.name;
+            const targetCategoryId = payload.categoriesId ? Number(payload.categoriesId) : course?.categoriesId;
+            
+            const existCourse = await this.prisma.courses.findFirst({
+                where: {
+                    name: targetName,
+                    categoriesId: targetCategoryId,
+                    NOT: { id },
+                },
+            });
+            if (existCourse) {
+                throw new ConflictException('A course with this name already exists in this category');
+            }
         }
         
         const banner = files?.banner?.[0]?.filename;
         const intro_video = files?.intro_video?.[0]?.filename;
+        
+        if (banner && course?.banner) {
+            const oldBanner = join(process.cwd(), 'src', 'uploads', 'images', course.banner);
+            if (fs.existsSync(oldBanner)) fs.unlinkSync(oldBanner);
+        }
+        if (intro_video && course?.intro_video) {
+            const oldVideo = join(process.cwd(), 'src', 'uploads', 'videos', course.intro_video);
+            if (fs.existsSync(oldVideo)) fs.unlinkSync(oldVideo);
+        }
         
         const updatedCourse = await this.prisma.courses.update({
             where: { id },
@@ -208,8 +286,7 @@ export class CoursesService {
                 ...(banner && { banner }),
                 ...(intro_video && { intro_video }),
                 ...(payload.categoriesId && { categories: { connect: { id: payload.categoriesId } } }),
-                ...(payload.teacherId && { teacher_profile: { connect: { id: payload.teacherId } } }),
-                ...(payload.assistantId && { user: { connect: { id: payload.assistantId } } }),
+                ...(payload.assistantId && { assistant: { connect: { id: payload.assistantId } } }),
             }
         });
         

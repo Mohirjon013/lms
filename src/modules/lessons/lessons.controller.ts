@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { LessonsService } from './lessons.service';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -9,6 +9,7 @@ import { Roles } from 'src/common/decorators/role';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
+import { JwtPayload } from 'src/common/config/jwt';
 
 @ApiBearerAuth()
 @Controller('lessons')
@@ -59,8 +60,11 @@ export class LessonsController {
         summary: `${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`,
     })
     @Delete(':id')
-    deleteLesson(@Param('id', ParseIntPipe) id:number){
-        return this.lessonService.deleteLesson(id)
+    deleteLesson(
+        @Param('id', ParseIntPipe) id:number,
+        @Req() req: Request & {user:JwtPayload}
+    ){
+        return this.lessonService.deleteLesson(id, req.user)
     }
 
     // Delete lesson end
@@ -112,9 +116,10 @@ export class LessonsController {
     )
     createLesson(
         @Body() payload:CreateLessonDto,
+        @Req() req: Request & {user:JwtPayload},
         @UploadedFile() file?:Express.Multer.File
     ){
-        return this.lessonService.createLesson(payload, file?.filename)
+        return this.lessonService.createLesson(payload, req.user, file?.filename)
     }
     
     // Create lesson end
@@ -168,9 +173,10 @@ export class LessonsController {
     updateLesson(
         @Body() payload:UpdateLessonDto,
         @Param('id', ParseIntPipe) id:number,
+        @Req() req: Request & {user:JwtPayload},
         @UploadedFile() file?:Express.Multer.File
     ){
-        return this.lessonService.updateLesson(id,payload,file?.filename)
+        return this.lessonService.updateLesson(id,payload, req.user, file?.filename)
     }
     
     // Update lesson end

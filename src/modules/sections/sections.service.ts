@@ -1,19 +1,40 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { CreateSectionDto } from './dto/create-section.dto';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { NotFound } from 'src/common/config/error';
 import { UpdateSectionDto } from './dto/update-section.dto';
-import { reportUnhandledError } from 'rxjs/internal/util/reportUnhandledError';
-import { dateTimestampProvider } from 'rxjs/internal/scheduler/dateTimestampProvider';
+import { JwtPayload } from 'src/common/config/jwt';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class SectionsService {
     constructor(private prisma:PrismaService){}
     
-    async getAllSections(page:number,limit:number){
+    
+    private async checkCourseOwnership(courseId: number, user: JwtPayload) {
+        if (user.role === UserRole.SUPERADMIN || user.role === UserRole.ADMIN) return;
+        
+        const course = await this.prisma.courses.findUnique({
+            where: { id: courseId },
+            include: { teacher_profile: true },
+        });
+        if (!course) NotFound("Course");
+        if (course?.teacher_profile.userId !== user.id) {
+            throw new ForbiddenException("You can only manage your own course's sections");
+        }
+    }
+    
+    
+    async getAllSections(page:number,limit:number,user:JwtPayload ){
         const skip = (page-1) * limit
+        
+        const where = user.role === UserRole.TEACHER
+        ? { course: { teacher_profile: { userId: user.id } } }
+        : {};
+        
         const [section, total] = await this.prisma.$transaction([
             this.prisma.sections.findMany({
+                where,
                 skip,
                 take:Number(limit),
                 select:{
@@ -22,7 +43,7 @@ export class SectionsService {
                     coursesId:true
                 }
             }),
-            this.prisma.sections.count()
+            this.prisma.sections.count({where})
         ])
         
         return {
@@ -34,30 +55,28 @@ export class SectionsService {
         }
     }
     
-    async getSectionByCategory(page:number,limit:number, categoryId:number){
-        const existCategoryID = await this.prisma.categories.findUnique({
-            where:{id:categoryId}
+    async getSectionByCourse(page:number, limit:number, courseId:number, user: JwtPayload){
+        const course  = await this.prisma.courses.findUnique({
+            where:{id:courseId}
         })
-        if(!existCategoryID) NotFound("Category");
-
-
+        if(!course) NotFound("Course");
+        
+        await this.checkCourseOwnership(courseId, user);
+        
         const skip = (page - 1) * limit
-        const [categories, total] = await this.prisma.$transaction([
+        const [sections, total] = await this.prisma.$transaction([
             this.prisma.sections.findMany({
                 skip,
                 take:Number(limit),
-                where:{
-                    course:{
-                        categoriesId:categoryId
-                    }
+                where:{coursesId:courseId},
+                select:{
+                    id: true,
+                    name: true,
+                    coursesId: true,
                 }
             }),
             this.prisma.sections.count({
-                where:{
-                    course:{
-                        categoriesId:categoryId
-                    }
-                }
+                where:{coursesId:courseId}
             })
         ])
         
@@ -66,12 +85,12 @@ export class SectionsService {
             total,
             page:Number(page),
             limit:Number(limit),
-            data:categories
+            data:sections
         }
         
     }
     
-    async getOneSection(id:number){
+    async getOneSection(id:number, user:JwtPayload){
         const section = await this.prisma.sections.findUnique({
             where:{id},
             select:{
@@ -84,22 +103,28 @@ export class SectionsService {
         if(!section){
             NotFound("Section")
         }
+        
+        await this.checkCourseOwnership(section.coursesId, user)
+        
         return {
             success:true,
             data:section
         }
     }
     
-    async searchSection(name:string){
+    async searchSection(name:string, user:JwtPayload){
         if(!name?.trim()) return {success:true, data: []}
         
+        const where: any = {
+            name: { contains: name.trim(), mode: "insensitive" },
+        };
+        
+        if (user.role === UserRole.TEACHER) {
+            where.course = { teacher_profile: { userId: user.id } };
+        }
+        
         const sections = await this.prisma.sections.findMany({
-            where:{
-                name:{
-                    contains:name.trim(),
-                    mode:"insensitive"
-                }
-            },
+            where,
             select:{
                 id:true,
                 name:true,
@@ -113,13 +138,15 @@ export class SectionsService {
         }
     }
     
-    async deleteSection(id:number){
+    async deleteSection(id:number, user: JwtPayload){
         const section = await this.prisma.sections.findUnique({
             where:{id}
         })
         
-        if(!section) NotFound("Section")
-            
+        if(!section) NotFound("Section");
+        
+        await this.checkCourseOwnership(section?.coursesId as number, user);
+        
         await this.prisma.sections.delete({
             where:{id}
         })
@@ -130,16 +157,22 @@ export class SectionsService {
         }
     }
     
-    async createSection(payload:CreateSectionDto){
+    async createSection(payload:CreateSectionDto, user: JwtPayload){
         const course = await this.prisma.courses.findUnique({
             where:{id:payload.coursesId}
         })
-        if(!course) NotFound("Course")
-            
-        // const existingName = await this.prisma.sections.findUnique({
-        //     where:{name:payload.name}
-        // })
-        // if(existingName) throw new ConflictException(`Section with name "${payload.name}" already exists`)
+        if(!course) NotFound("Course");
+        
+        await this.checkCourseOwnership(payload.coursesId, user)
+        
+        
+        const existingName = await this.prisma.sections.findFirst({
+            where:{
+                coursesId:payload.coursesId,
+                name:payload.name
+            }
+        })
+        if(existingName) throw new ConflictException(`Section with name "${payload.name}" already exists in the course`)
             
         
         
@@ -156,26 +189,40 @@ export class SectionsService {
         }
     }
     
-    async updateSection(id:number, payload:UpdateSectionDto){
+    async updateSection(id:number, payload:UpdateSectionDto, user:JwtPayload){
         const existSection = await this.prisma.sections.findUnique({
             where:{id}
         })
         
-        if(!existSection) NotFound("Section")
-            
+        if(!existSection) NotFound("Section");
+        
+        await this.checkCourseOwnership(existSection?.coursesId as number, user);
+        
         if(payload.coursesId){
             const course = await this.prisma.courses.findUnique({
                 where:{id:payload.coursesId}
             })
-            if(!course) NotFound("Course")
-            }
+            if(!course) NotFound("Course");
+            
+            await this.checkCourseOwnership(payload.coursesId, user);
+        }
         
-        // if(payload.name){
-        //     const existingName = await this.prisma.sections.findUnique({
-        //         where:{name:payload.name}
-        //     })
-        //     if(existingName) throw new ConflictException(`Section with name "${payload.name}" already exists`)
-        // }
+        
+        if (payload.name || payload.coursesId) {
+            const targetName = payload.name ?? existSection?.name;
+            const targetCourseId = payload.coursesId ?? existSection?.coursesId;
+            
+            const duplicate = await this.prisma.sections.findFirst({
+                where: {
+                    coursesId: targetCourseId,
+                    name: targetName,
+                    NOT: { id },   // o'zini hisobga olmaslik
+                },
+            });
+            if (duplicate) {
+                throw new ConflictException(`Section "${targetName}" already exists in this course`);
+            }
+        }
         
         
         await this.prisma.sections.update({

@@ -238,7 +238,6 @@ export class TeachersService {
     
     if(existTeacher.file){
       const filePath = join(process.cwd(), "src", "uploads", "images", `${existTeacher.file}`)
-      console.log(filePath);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }

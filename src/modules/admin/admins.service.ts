@@ -85,7 +85,6 @@ export class AdminsService {
     
     if(existAdmin.file){
       const filePath = join(process.cwd(), "src", "uploads", "images", `${existAdmin.file}`)
-      console.log(filePath);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }

@@ -23,11 +23,7 @@ export class CreateCourseDto {
     categoriesId!: number;
     
     @Type(() => Number)
+    @IsOptional()
     @IsNumber()
     teacherId!: number;
-    
-    @IsOptional()
-    @Type(() => Number)
-    @IsNumber()
-    assistantId?: number;
 }

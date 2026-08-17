@@ -141,6 +141,7 @@ model Courses {
   purchasedCourses PurchasedCourse[]
   ratings          Rating[]
 
+  @@unique([categoriesId, name])
   @@map("courses")
 }
 

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { CoursesService } from './courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
@@ -9,6 +9,7 @@ import { UserRole } from '@prisma/client';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { UpdateCourseDto } from './dto/update-course.dto';
+import { JwtPayload } from 'src/common/config/jwt';
 
 @ApiBearerAuth()
 @Controller('courses')
@@ -23,14 +24,16 @@ export class CoursesController {
     @ApiQuery({name:'page', required:false, example:1})
     @ApiQuery({name:'limit', required:false, example:10})
     @ApiOperation({
-        summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`
+        summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`,
+        description: `SUPERADMIN, ADMIN — all courses. TEACHER — only own courses.`
     })
     @Get('/all')
     getAllCourse(
         @Query('page') page:number = 1,
-        @Query('limit') limit:number = 1
+        @Query('limit') limit:number = 1,
+        @Req() req: Request & {user:JwtPayload}
     ) {
-        return this.courseService.getAllCourse(page,limit)
+        return this.courseService.getAllCourse(page,limit, req.user)
     }
     
     // get all course end
@@ -41,11 +44,15 @@ export class CoursesController {
     @UseGuards(AuthGuard, RoleGuard)
     @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
     @ApiOperation({
-        summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`
+        summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`,
+        description: `SUPERADMIN, ADMIN — all courses. TEACHER — only own courses.`
     })
     @Get('/search')
-    searchCourse(@Query('name') name:string){
-        return this.courseService.searchCourse(name)
+    searchCourse(
+        @Query('name') name:string,
+        @Req() req: Request & {user:JwtPayload}
+    ){
+        return this.courseService.searchCourse(name, req.user)
     }
     
     // search course end
@@ -64,10 +71,10 @@ export class CoursesController {
     }
     
     // get one course end
-
-
+    
+    
     // delete course start
-
+    
     @UseGuards(AuthGuard, RoleGuard)
     @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
     @ApiOperation({
@@ -77,10 +84,10 @@ export class CoursesController {
     deleteCourse(@Param('id', ParseIntPipe) id:number){
         return this.courseService.deleteCourse(id)
     }
-
+    
     // delete course end
     
-
+    
     // Update course start
     
     @UseGuards(AuthGuard, RoleGuard)
@@ -121,10 +128,6 @@ export class CoursesController {
                     example: 'BEGINNER',
                 },
                 categoriesId: {
-                    type: 'number',
-                    example: 1,
-                },
-                teacherId: {
                     type: 'number',
                     example: 1,
                 },
@@ -182,13 +185,14 @@ export class CoursesController {
     updateCourse(
         @Body() payload:UpdateCourseDto,
         @Param('id', ParseIntPipe) id:number,
+        @Req() req: Request & {user:JwtPayload},
         @UploadedFiles() files:{
             banner?:Express.Multer.File[]
             intro_video?:Express.Multer.File[]
         }
-
+        
     ){
-        return this.courseService.updateCourse(payload, id, files)
+        return this.courseService.updateCourse(payload, id, req.user, files)
     }
     
     // Update course end
@@ -240,12 +244,7 @@ export class CoursesController {
                 teacherId: {
                     type: 'number',
                     example: 1,
-                },
-                assistantId: {
-                    type: 'number',
-                    example: 2,
-                    nullable: true,
-                },
+                }
             },
         },
     })
@@ -294,12 +293,13 @@ export class CoursesController {
     )
     createCourse(
         @Body() payload:CreateCourseDto,
+        @Req() req: Request & {user:JwtPayload} ,
         @UploadedFiles() files:{
             banner?:Express.Multer.File[]
             intro_video?:Express.Multer.File[]
         }
     ){
-        return this.courseService.createCourse(payload, files)
+        return this.courseService.createCourse(payload, req.user, files)
     }
     
     // create course end

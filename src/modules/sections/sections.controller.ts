@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { CreateSectionDto } from './dto/create-section.dto';
 import { SectionsService } from './sections.service';
 import { Roles } from 'src/common/decorators/role';
@@ -8,6 +8,7 @@ import { RoleGuard } from 'src/guards/role.guard';
 import { AuthGuard } from 'src/guards/jwt-auth.guard';
 import { getTextOfJSDocComment } from 'typescript';
 import { UpdateSectionDto } from './dto/update-section.dto';
+import { JwtPayload } from 'src/common/config/jwt';
 
 @ApiBearerAuth()
 @Controller('sections')
@@ -26,16 +27,17 @@ export class SectionsController {
     @Get('/all')
     getAllSections(
         @Query('page') page:number = 1,
-        @Query('limit') limit:number = 10
+        @Query('limit') limit:number = 10,
+        @Req() req:Request & {user:JwtPayload},
         
     ){
-        return this.sectionService.getAllSections(page,limit)
+        return this.sectionService.getAllSections(page,limit, req.user)
     }
     
     // Get all sections end
-
     
-    // Get sections by categoryID start
+    
+    // Get sections by course start
     
     @UseGuards(AuthGuard, RoleGuard)
     @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
@@ -44,18 +46,20 @@ export class SectionsController {
     @ApiOperation({
         summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`
     })
-    @Get('/all/categories/:categoryId')
-    getSectionByCategory(
-        @Param('categoryId', ParseIntPipe) categoryId:number,
+    @Get('/course/:courseId')
+    getSectionByCourse(
+        @Param('courseId', ParseIntPipe) courseId:number,
         @Query('page') page:number = 1,
-        @Query('limit') limit:number = 10
+        @Query('limit') limit:number = 10,
+        @Req() req:Request & {user:JwtPayload}
+        
         
     ){
-        return this.sectionService.getSectionByCategory(page,limit, categoryId)
+        return this.sectionService.getSectionByCourse(page,limit, courseId, req.user)
     }
     
-    // Get sections by categoryID end
-
+    // Get sections by course end
+    
     
     // Search sections start
     
@@ -65,8 +69,11 @@ export class SectionsController {
         summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`
     })
     @Get('/search')
-    searchSection(@Query('name') name:string){
-        return this.sectionService.searchSection(name)
+    searchSection(
+        @Query('name') name:string,
+        @Req() req:Request & {user:JwtPayload}
+    ){
+        return this.sectionService.searchSection(name, req.user)
     }
     
     // Search sections end
@@ -80,8 +87,11 @@ export class SectionsController {
         summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`
     })
     @Get(':id')
-    getOneSection(@Param('id', ParseIntPipe) id:number){
-        return this.sectionService.getOneSection(id)
+    getOneSection(
+        @Param('id', ParseIntPipe) id:number,
+        @Req() req:Request & {user:JwtPayload}
+    ){
+        return this.sectionService.getOneSection(id, req.user)
     }
     
     // Get one sections end
@@ -92,8 +102,11 @@ export class SectionsController {
     @UseGuards(AuthGuard, RoleGuard)
     @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
     @Delete(':id')
-    deleteSection(@Param('id', ParseIntPipe) id:number){
-        return this.sectionService.deleteSection(id)
+    deleteSection(
+        @Param('id', ParseIntPipe) id:number, 
+        @Req() req:Request & {user:JwtPayload},
+    ){
+        return this.sectionService.deleteSection(id, req.user)
     }
     
     // delete section end
@@ -107,13 +120,16 @@ export class SectionsController {
         summary:`${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER}`
     })
     @Post()
-    createSection(@Body() payload:CreateSectionDto){
-        return this.sectionService.createSection(payload)
+    createSection(
+        @Body() payload:CreateSectionDto,
+        @Req() req:Request & {user:JwtPayload}
+    ){
+        return this.sectionService.createSection(payload, req.user)
     }
     
     // create section end
-
-
+    
+    
     // update section start
     
     @UseGuards(AuthGuard, RoleGuard)
@@ -124,11 +140,12 @@ export class SectionsController {
     @Patch(':id')
     updateSection(
         @Body() payload:UpdateSectionDto,
+        @Req() req:Request & {user:JwtPayload},
         @Param('id' , ParseIntPipe) id:number
     ){
-        return this.sectionService.updateSection(id, payload)
+        return this.sectionService.updateSection(id, payload, req.user)
     }
-
+    
     // update section end
     
 }

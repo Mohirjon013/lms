@@ -1,13 +1,34 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/core/database/prisma.service';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { NotFound } from 'src/common/config/error';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
+import { UserRole } from '@prisma/client';
+import { JwtPayload } from 'src/common/config/jwt';
+import { join } from 'path';
+import fs from "fs"
 
 @Injectable()
 export class LessonsService {
     constructor(private prisma :PrismaService){}
-
+    
+    private async checkSectionOwnership(sectionId: number, user: JwtPayload) {
+        if (user.role !== UserRole.TEACHER) return;
+        
+        const section = await this.prisma.sections.findUnique({
+            where: { id: sectionId },
+            include: {
+                course: {
+                    include: { teacher_profile: true },
+                },
+            },
+        });
+        if (!section) NotFound("Section");
+        if (section?.course.teacher_profile.userId !== user.id) {
+            throw new ForbiddenException("You can only manage lessons in your own course");
+        }
+    }
+    
     async getAllLesson(page:number,limit:number){
         const skip = (page - 1) * limit 
         const [lesson, total] = await this.prisma.$transaction([
@@ -58,36 +79,40 @@ export class LessonsService {
         }
     }
     
-    async deleteLesson(id:number){
+    async deleteLesson(id:number, user: JwtPayload){
         const existLesson = await this.prisma.lessons.findUnique({
             where:{ id }
         })
         if(!existLesson) NotFound("Lesson");
+
+        await this.checkSectionOwnership(existLesson.sectionsId , user)
         
         await this.prisma.lessons.delete({
             where:{id}
         })
-
+        
         return{
             success:true,
             message:"Delete lesson successfully!"
         }
     }
+    
+    async createLesson(payload:CreateLessonDto, user:JwtPayload, filename?:string){
 
-    async createLesson(payload:CreateLessonDto, filename?:string){
         const sectionId = await this.prisma.sections.findUnique({
             where:{
                 id:payload.sectionsId
             }
         })
+        if(!sectionId) NotFound("Section");
         
-        if(!sectionId) NotFound("Section")
-            
-        // const existingName = await this.prisma.lessons.findUnique({
-        //     where:{name:payload.name}
-        // })
+        await this.checkSectionOwnership(payload.sectionsId, user);
         
-        // if(existingName) throw new ConflictException(`Lesson with name "${payload.name}" already exists`)
+        const existingName = await this.prisma.lessons.findFirst({
+            where:{sectionsId:payload.sectionsId ,name:payload.name}
+        })
+        
+        if(existingName) throw new ConflictException(`Lesson with name "${payload.name}" already exists`)
             
         if(!filename) throw new BadRequestException('File is required');
         
@@ -95,7 +120,7 @@ export class LessonsService {
             data:{
                 name:payload.name,
                 description:payload.description,
-                file:filename as string,
+                file:filename,
                 section:{connect:{id:payload.sectionsId}}
             }
         })
@@ -106,25 +131,34 @@ export class LessonsService {
         }
     }
     
-    async updateLesson(id:number,payload:UpdateLessonDto,filename?:string){
+    async updateLesson(id:number,payload:UpdateLessonDto,user:JwtPayload,filename?:string){
         const existLesson = await this.prisma.lessons.findUnique({
             where:{ id }
         })
-        if(!existLesson) NotFound("Lesson")
-            
-        if(payload.sectionsId){
-            const section = await this.prisma.sections.findUnique({
-                where:{ id: payload.sectionsId }
-            })
-            if(!section) NotFound("Section")
-            }
+        if(!existLesson) NotFound("Lesson");
         
-        // if(payload.name){
-        //     const existingName = await this.prisma.lessons.findUnique({
-        //         where:{ name: payload.name }
-        //     })
-        //     if(existingName) throw new ConflictException(`Lesson with name "${payload.name}" already exists`);
-        // }
+        await this.checkSectionOwnership(existLesson.sectionsId, user);
+        
+        if (payload.name || payload.sectionsId) {
+            const targetName = payload.name ?? existLesson?.name;
+            const targetSectionId = payload.sectionsId ?? existLesson?.sectionsId;
+            
+            const duplicate = await this.prisma.lessons.findFirst({
+                where: {
+                    sectionsId: targetSectionId,
+                    name: targetName,
+                    NOT: { id },
+                },
+            });
+            if (duplicate) {
+                throw new ConflictException(`Lesson "${targetName}" already exists in this section`);
+            }
+        }
+        
+        if (filename && existLesson?.file) {
+            const oldFile = join(process.cwd(), 'src', 'uploads', 'videos', existLesson.file);
+            if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
+        }
         
         await this.prisma.lessons.update({
             where:{ id },
@@ -141,5 +175,5 @@ export class LessonsService {
             message: "Updated lesson successfully!"
         }
     }
-
+    
 }
