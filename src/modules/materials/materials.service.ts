@@ -123,8 +123,6 @@ export class MaterialsService {
         return { success: true, message: "Material created successfully!" };
     }
     
-    
-    
     async updateMaterial(id:number, payload:UpdateMaterialDto, user:JwtPayload, filenames:string[] ){
         const material = await this.prisma.materials.findUnique({
             where: { id },

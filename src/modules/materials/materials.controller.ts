@@ -46,22 +46,6 @@ export class MaterialsController {
     // Get one material end
     
     
-    // Delete materials start
-    
-    @UseGuards(AuthGuard, RoleGuard)
-    @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
-    @ApiOperation({ summary: `${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER},` })
-    @Delete(':id')
-    deleteMaterial(
-        @Param('id', ParseIntPipe) id:number,
-        @Req() req: Request & {user:JwtPayload}
-    ){
-        return this.materialsService.deleteMaterial(id,req.user)
-    }
-    
-    // Delete materials end
-    
-    
     // Delete material file start
     
     @UseGuards(AuthGuard, RoleGuard)
@@ -76,6 +60,22 @@ export class MaterialsController {
     }
     
     // Delete material file end
+    
+    
+    // Delete materials start
+    
+    @UseGuards(AuthGuard, RoleGuard)
+    @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.TEACHER)
+    @ApiOperation({ summary: `${UserRole.SUPERADMIN}, ${UserRole.ADMIN}, ${UserRole.TEACHER},` })
+    @Delete(':id')
+    deleteMaterial(
+        @Param('id', ParseIntPipe) id:number,
+        @Req() req: Request & {user:JwtPayload}
+    ){
+        return this.materialsService.deleteMaterial(id,req.user)
+    }
+    
+    // Delete materials end
     
     
     // Update material start
@@ -162,5 +162,5 @@ export class MaterialsController {
     }
     
     // Create material end
-    
+
 }

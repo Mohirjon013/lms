@@ -281,31 +281,51 @@ model Homeworks {
   id         Int      @id @default(autoincrement())
   lessonsId  Int
   title      String
-  file       String?
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   lessons             Lessons              @relation(fields: [lessonsId], references: [id], onDelete: Cascade)
   homeworkSubmissions HomeworkSubmission[]
+  files               HomeworkFiles[]
 
   @@map("homeworks")
+}
+
+model HomeworkFiles {
+  id         Int    @id @default(autoincrement())
+  homeworkId Int
+  file       String
+
+  homework Homeworks @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+
+  @@map("homework_files")
 }
 
 model HomeworkSubmission {
   id         Int               @id @default(autoincrement())
   text       String?
-  file       String
-  reason     String? // rad etilsa — sababi
+  reason     String?
   status     HomeworkSubStatus @default(PENDING)
   homeworkId Int
   userId     Int
   created_at DateTime          @default(now())
   updated_at DateTime          @updatedAt
 
-  homework Homeworks @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  homework Homeworks         @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files    SubmissionFiles[]
 
   @@map("homework_submission")
+}
+
+model SubmissionFiles {
+  id           Int    @id @default(autoincrement())
+  submissionId Int
+  file         String
+
+  submission HomeworkSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("submission_files")
 }
 
 model Tests {
