@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
-import { HomeworkSubStatus, UserRole } from '@prisma/client';
+import { HomeworkSubStatus, PaymentStatus, UserRole } from '@prisma/client';
 import { NotFound } from 'src/common/config/error';
 import { JwtPayload } from 'src/common/config/jwt';
 import { PrismaService } from 'src/core/database/prisma.service';
@@ -67,11 +67,26 @@ export class HomeworkService {
     }
     
     
-    async getHomeworkByLesson(lessonId:number){
+    async getHomeworkByLesson(lessonId:number, user:JwtPayload){
         const lesson = await this.prisma.lessons.findUnique({
             where: { id: lessonId },
+            select: { id: true, section: { select: { coursesId: true } } },
         });
         if (!lesson) NotFound("Lesson");
+        
+        
+        if (user.role === UserRole.STUDENT) {
+            const purchase = await this.prisma.purchasedCourse.findFirst({
+                where: {
+                    userId: user.id,
+                    courseId: lesson.section.coursesId,
+                    status: PaymentStatus.COMPLETED,
+                },
+            });
+            if (!purchase) {
+                throw new ForbiddenException("You have not purchased this course");
+            }
+        }
         
         const homeworks = await this.prisma.homeworks.findMany({
             where: { lessonsId: lessonId },
@@ -194,8 +209,23 @@ export class HomeworkService {
     async submitHomework(homeworkId:number, userId:number, text:string | undefined, filenames:string[]){
         const homework = await this.prisma.homeworks.findUnique({
             where: { id: homeworkId },
+            select:{
+                id:true,
+                lessons: { select: { section: { select: { coursesId: true } } } },
+            }
         });
         if (!homework) NotFound("Homework");
+        
+        const purchase = await this.prisma.purchasedCourse.findFirst({
+            where: {
+                userId,
+                courseId: homework.lessons.section.coursesId,
+                status: PaymentStatus.COMPLETED,
+            },
+        });
+        if (!purchase) {
+            throw new ForbiddenException("You have not purchased this course");
+        }
         
         if ((!text || !text.trim()) && filenames.length === 0) {
             throw new BadRequestException('You must provide text or at least one file');
@@ -278,6 +308,18 @@ export class HomeworkService {
                 }
             }
         }
+        else if(user.role === UserRole.ASSISTANT){
+            where.homework = {
+                lessons:{
+                    section: { 
+                        course: { 
+                            id: courseId,
+                            assistantId: user.id
+                        }
+                    } 
+                }
+            }
+        }
         
         if(status){
             where.status = status
@@ -312,8 +354,8 @@ export class HomeworkService {
             },
             orderBy:{created_at: 'desc'}
         })
-
-
+        
+        
         return {
             success:true,
             data:submissions
@@ -358,7 +400,7 @@ export class HomeworkService {
         })
         
         if(!target) NotFound("Submission");
-
+        
         
         if (target.status !== 'PENDING') {
             throw new ConflictException('This submission is already reviewed');
@@ -371,7 +413,7 @@ export class HomeworkService {
                 reason: status === 'REJECTED' ? reason : null
             }
         })
-
+        
         return { success: true, message: `Submission ${status.toLowerCase()} successfully!` };
     }
 }

@@ -25,9 +25,10 @@ export class MaterialsController {
     })
     @Get('/lesson/:lessonId')
     getMaterialByLesson(
-        @Param('lessonId', ParseIntPipe) lessonId:number
+        @Param('lessonId', ParseIntPipe) lessonId:number,
+        @Req() req: Request & { user: JwtPayload },
     ){
-        return this.materialsService.getMaterialByLesson(lessonId)
+        return this.materialsService.getMaterialByLesson(lessonId,req.user)
     }
     
     // Get materials by lesson end
@@ -162,5 +163,5 @@ export class MaterialsController {
     }
     
     // Create material end
-
+    
 }

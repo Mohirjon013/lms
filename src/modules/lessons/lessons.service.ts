@@ -46,6 +46,7 @@ export class LessonsService {
                     name:true,
                     description:true,
                     file:true,
+                    duration:true,
                     sectionsId:true
                 }
             }),
@@ -147,6 +148,7 @@ export class LessonsService {
                 name:payload.name,
                 description:payload.description,
                 file:filename,
+                duration:payload.duration ? Number(payload.duration) : null,
                 section:{connect:{id:payload.sectionsId}}
             }
         })
@@ -203,6 +205,7 @@ export class LessonsService {
                 ...(payload.name && { name: payload.name }),
                 ...(payload.description && { description: payload.description }),
                 ...(filename && { file: filename }),
+                ...(payload.duration && { duration: Number(payload.duration) }),
                 ...(payload.sectionsId && { section: { connect: { id: payload.sectionsId } } }),
             }
         })

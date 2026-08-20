@@ -209,6 +209,7 @@ model Lessons {
   name        String
   sectionsId  Int
   description String
+  duration    Int?
   file        String
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt

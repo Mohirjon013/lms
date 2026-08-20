@@ -15,7 +15,7 @@ export class JwtToken {
     jwtAccessToken(payload: JwtPayload) {
         return this.jwtService.sign(payload, {
             secret: process.env.SECRET_KEY,
-            expiresIn: '30m',
+            expiresIn: '60m',
         });
     }
     

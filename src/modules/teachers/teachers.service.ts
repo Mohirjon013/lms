@@ -28,7 +28,9 @@ export class TeachersService {
           file:true,
           status: true,
           role: true,
-        }
+          created_at:true
+        },
+        orderBy: { created_at: 'desc' },
       }),
       
       this.prisma.user.count({where:{role:UserRole.TEACHER}})
@@ -65,8 +67,15 @@ export class TeachersService {
             linkedin: true,
             instagram: true,
             github: true,
+            courses:{
+              select:{
+                id:true,  
+                name:true
+              }
+            }
           }
-        }
+        },
+        
       }
     })
     

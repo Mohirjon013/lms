@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { PaymentStatus, UserRole } from '@prisma/client';
 import { NotFound } from 'src/common/config/error';
 import { JwtPayload } from 'src/common/config/jwt';
 import { PrismaService } from 'src/core/database/prisma.service';
@@ -37,12 +37,25 @@ export class MaterialsService {
         }
     }
     
-    async getMaterialByLesson(lessonId:number){
-        
+    async getMaterialByLesson(lessonId:number, user:JwtPayload){
         const lesson = await this.prisma.lessons.findUnique({
             where: { id: lessonId },
+            select: { id: true, section: { select: { coursesId: true } } },
         });
         if (!lesson) NotFound("Lesson");
+        
+        if (user.role === UserRole.STUDENT) {
+            const purchase = await this.prisma.purchasedCourse.findFirst({
+                where: {
+                    userId: user.id,
+                    courseId: lesson.section.coursesId,
+                    status: PaymentStatus.COMPLETED,
+                },
+            });
+            if (!purchase) {
+                throw new ForbiddenException("You have not purchased this course");
+            }
+        }
         
         const materials = await this.prisma.materials.findMany({
             where:{lessonsId:lessonId},

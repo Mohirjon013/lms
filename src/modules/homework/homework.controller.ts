@@ -3,7 +3,7 @@ import { HomeworkService } from './homework.service';
 import { AuthGuard } from 'src/guards/jwt-auth.guard';
 import { RoleGuard } from 'src/guards/role.guard';
 import { Roles } from 'src/common/decorators/role';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { HomeworkSubStatus, UserRole } from '@prisma/client';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -27,9 +27,10 @@ export class HomeworkController {
     })
     @Get('/lesson/:lessonId')
     getHomeworkByLesson(
-        @Param('lessonId', ParseIntPipe) lessonId:number
+        @Param('lessonId', ParseIntPipe) lessonId:number,
+        @Req() req: Request & { user: JwtPayload },
     ){
-        return this.homeworkService.getHomeworkByLesson(lessonId)
+        return this.homeworkService.getHomeworkByLesson(lessonId, req.user)
     }
     
     // Get materials by lesson end
@@ -185,7 +186,7 @@ export class HomeworkController {
     // Submit homework start
     
     @UseGuards(AuthGuard, RoleGuard)
-    @Roles(UserRole.STUDENT, UserRole.SUPERADMIN)
+    @Roles(UserRole.STUDENT)
     @ApiOperation({ 
         summary: `${UserRole.STUDENT}`,
         description: 'Student submits a homework with optional text and file attachments (max 10 files). Only STUDENT can perform this action.',
@@ -200,7 +201,7 @@ export class HomeworkController {
             },
         },
     })
-    @Post('/submission/submit/:homeworkId')
+    @Post('/submit/:homeworkId')
     @UseInterceptors(
         FilesInterceptor('files', 10, {
             storage: diskStorage({
@@ -252,6 +253,11 @@ export class HomeworkController {
         summary: `${UserRole.TEACHER}, ${UserRole.ASSISTANT}`,
         description: 'Returns all homework submissions for a specific course. Can be filtered by status (query param). Only TEACHER and ASSISTANT can perform this action.'
     })
+    @ApiQuery({
+        name: 'status',
+        required: false,
+        enum: HomeworkSubStatus,
+    })
     @Get('/all/:courseId/homework/submission')
     getAllSubmissions(
         @Req() req: Request & {user: JwtPayload},
@@ -262,6 +268,7 @@ export class HomeworkController {
     }
     
     // Get all Submissions end
+    
     
     
     // Get single submissions start

@@ -13,6 +13,7 @@ import { LessonsModule } from './modules/lessons/lessons.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { MaterialsModule } from './modules/materials/materials.module';
 import { HomeworkModule } from './modules/homework/homework.module';
+import { StudentsModule } from './modules/students/students.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { HomeworkModule } from './modules/homework/homework.module';
     SeederModule,
     AuthModule,
     AdminsModule,
+    StudentsModule,
     TeachersModule,
     CategoriesModule,
     CoursesModule,
