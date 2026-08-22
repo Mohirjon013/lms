@@ -359,6 +359,7 @@ model TestResult {
   lessons Lessons @relation(fields: [lessonsId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([lessonsId, userId])
   @@map("test_result")
 }
 
